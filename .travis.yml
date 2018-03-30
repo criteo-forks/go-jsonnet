@@ -1,13 +1,37 @@
+go_import_path: github.com/criteo-forks/go-jsonnet
 language: go
 sudo: false
 go:
-  - 1.x
-  - 1.8.x
-  - tip
+- 1.10.x
 before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
+- go get -d -v ./...
+- go get github.com/axw/gocov/gocov
+- go get github.com/sergi/go-diff/diffmatchpatch
+- go get github.com/mattn/goveralls
+- if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
-  - ./tests.sh --skip-go-test
+- $HOME/gopath/bin/goveralls -service=travis-ci
+- ./tests.sh --skip-go-test
+- export BAKELITE_VERSION="v0.1.0"
+- export BAKELITE_OS="linux"
+- export BAKELITE_ARCH="amd64"
+- curl -L -o bakelite.tar.gz "https://github.com/terinjokes/bakelite/releases/download/${BAKELITE_VERSION}/bakelite-${BAKELITE_OS}-${BAKELITE_ARCH}.tar.gz"
+- tar -xf bakelite.tar.gz
+- export SOURCE_DATE_EPOCH=$(git show -s --format=%ci ${TRAVIS_TAG:-${TRAVIS_COMMIT}}^{commit})
+- ./bakelite-${BAKELITE_OS}-${BAKELITE_ARCH} -platforms="-plan9" github.com/criteo-forks/go-jsonnet/jsonnet
+- for i in jsonnet-*; do tar --mtime="${SOURCE_DATE_EPOCH}" --owner=0 --group=0  --numeric-owner -c $i | gzip -n - > $i.tar.gz; done
+- shasum -a 512 jsonnet-*.tar.gz | tee sha512sum.txt
+install:
+- go build -v ./...
+deploy:
+  provider: releases
+  file_glob: true
+  file:
+  - jsonnet-*.tar.gz
+  - sha512sum.txt
+  skip_cleanup: true
+  on:
+    repo: criteo-forks/go-jsonnet
+    tags: true
+  api-key:
+    secure: X9cSPmWD3vJx6dPs/D94t3g98qrU+akJiEytMLhDArVT/mjsgA6z1b1pqLDtmb8ShbMdnWrPP7xsNLy5CVVgyxA46gH1QfWZnNKfYLXm/m/7QdmsrLGWiNgz3F/Wwde0W4HdZh55/KbGOay/EIR9uC55NZ1kx3JJsewtnvyMd1bYmZAhd9YSXvMmddQkUq6Y198GexOFe5UT9KmHD4tLmmaqUhCEmN396p5LK+G7p+fJt/cBO0M06owqdaM6YFhlimxwDQasl0C/KFH+WKJIE7OAuTV0Zjj2TYtHCRaVoDapNXMFgMSjgp+PBLEGOGkGmz5c5YECbR7B7wuiFZufFHax5thvhrs6SPIljnybUu0flhy6a3wQPabsNqKOg8U/YSflaGNrSYBLg5dVCKqre1wINHwXhkhDwol8yX3uVJVXti2BbcsubCvAgTVVUNWfKgLfj6uebUpnAGvk1iR0AvHiDjlY0L6iv8uWjClueTqw/oM90s/4Ie8D7dhtjb/g2856o+SCVDGhktkHzF+sFN+f6N0r91Stqh5IFvwK4CtB+sUfGu2H+DMIrEfseUDpSscjrGhV0NRqPBCFWgL3597ijmMuJZspiWOGMDJ1YtN+3/wO1hFN3HrXmhoWDwOmD5aDqevTQDLfMwHYWgu5RXZq1AOgQ8XP3QAte4A65jA=
