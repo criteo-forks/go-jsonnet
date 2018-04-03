@@ -2,11 +2,31 @@ go_import_path: github.com/bubblesly/go-jsonnet
 language: go
 sudo: false
 go:
-  - 1.8.x
-  - 1.9.x
-before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
+- 1.8.x
+- 1.9.x
 script:
-  - goveralls -service=travis-ci
-  - ./tests.sh --skip-go-test
+- export BAKELITE_VERSION="v0.1.0"
+- export BAKELITE_OS="linux"
+- export BAKELITE_ARCH="amd64"
+- curl -L -o bakelite.tar.gz "https://github.com/terinjokes/bakelite/releases/download/${BAKELITE_VERSION}/bakelite-${BAKELITE_OS}-${BAKELITE_ARCH}.tar.gz"
+- tar -xf bakelite.tar.gz
+- export SOURCE_DATE_EPOCH=$(git show -s --format=%ci ${TRAVIS_TAG:-${TRAVIS_COMMIT}}^{commit})
+- ./bakelite-${BAKELITE_OS}-${BAKELITE_ARCH} -platforms="-plan9" -ldflags="-X main.version=\"$(make
+  show-version)\"" github.com/bubblesly/go-jsonnet
+- for i in go-jsonnet-*; do tar --mtime="${SOURCE_DATE_EPOCH}" --owner=0 --group=0
+  --numeric-owner -c $i | gzip -n - > $i.tar.gz; done
+- shasum -a 512 go-jsonnet-*.tar.gz | tee sha512sum.txt
+install:
+- go get -d -v ./...
+- go build -v ./...
+deploy:
+  provider: releases
+  file_glob: true
+  file:
+  - go-jsonnet-*.tar.gz
+  - sha512sum.txt
+  skip_cleanup: true
+  on:
+    repo: bubblesly/go-jsonnet
+  api-key:
+    secure: ZEl1JCVLdZ3TP10rXzIOAiT+TGt+pB8PEZQvNHIPLwzqxdw2h/pOE62Sb5oM50SYh+v4CDHJV+WVRCrl20HpOJH5H4KvFoqbjsxw0nH5YEYVMImwIrmuBl2b+4m76O5uGVkMul/GiWC89JDa9TOmOMRVCXrOvtO3C5FPy30ZOTOYhxH8lEW+1w6IHKcCsZqiCvFk+1nVC3wHGYB2bvRcnGKJzSj/H5DA85wKdEBsMHDiJzwzTDr1gSJzinsmPEkvdzKeqFtx/CtzFx+4dxOSYACqiFVvVP6IdYvVYfofOZ6LiWo17oOh9L9u9AXxuX7cK6dYzn2pj3tSubdKa/PwBIZ4ZqtSonMnVKGPmUndX10gJQquwLv3bvW3q4/MZIwYaKIDQWFECSGu0mTr73vtZFou0Z5+e07lWfRkgaHWFdWJbx0QxxG8Oft6MfxFGxP6eKVBE0fascQZTjkHSM8DoiFpvEiGJ+a4XYTxazQXDrOjBFtBUk5BBMdpW9jjXdAOtD/Gzfud/T8tw+bEfX2ppPMZkNaH9Q5RUX5T71QEZ1BCP1ZCM4lNUWZiTQFyzUh+u+YmfLq1oKIM8gJ21E+cnbRx7mTThDB6kFF9abrUyEDau4zCi2CiehZ5JoDbiTACuUarSP2qEkxh1vgICL9Z3toxn3FJGhrmlBLJQrPYYv0=
