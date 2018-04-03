@@ -1,32 +1,38 @@
-go_import_path: github.com/bubblesly/go-jsonnet
+go_import_path: github.com/criteo-forks/go-jsonnet
 language: go
 sudo: false
 go:
-- 1.8.x
-- 1.9.x
+- 1.10.x
+before_install:
+- go get -d -v ./...
+- go get github.com/axw/gocov/gocov
+- go get github.com/sergi/go-diff/diffmatchpatch
+- go get github.com/mattn/goveralls
+- if ! go get github.com/golang/tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
 script:
+- $HOME/gopath/bin/goveralls -service=travis-ci
+- ./tests.sh --skip-go-test
 - export BAKELITE_VERSION="v0.1.0"
 - export BAKELITE_OS="linux"
 - export BAKELITE_ARCH="amd64"
 - curl -L -o bakelite.tar.gz "https://github.com/terinjokes/bakelite/releases/download/${BAKELITE_VERSION}/bakelite-${BAKELITE_OS}-${BAKELITE_ARCH}.tar.gz"
 - tar -xf bakelite.tar.gz
 - export SOURCE_DATE_EPOCH=$(git show -s --format=%ci ${TRAVIS_TAG:-${TRAVIS_COMMIT}}^{commit})
-- ./bakelite-${BAKELITE_OS}-${BAKELITE_ARCH} -platforms="-plan9" -ldflags="-X main.version=\"$(make
-  show-version)\"" github.com/bubblesly/go-jsonnet
-- for i in go-jsonnet-*; do tar --mtime="${SOURCE_DATE_EPOCH}" --owner=0 --group=0
-  --numeric-owner -c $i | gzip -n - > $i.tar.gz; done
-- shasum -a 512 go-jsonnet-*.tar.gz | tee sha512sum.txt
+- ./bakelite-${BAKELITE_OS}-${BAKELITE_ARCH} -platforms="-plan9" github.com/criteo-forks/go-jsonnet/jsonnet
+- for i in jsonnet-*; do tar --mtime="${SOURCE_DATE_EPOCH}" --owner=0 --group=0  --numeric-owner -c $i | gzip -n - > $i.tar.gz; done
+- shasum -a 512 jsonnet-*.tar.gz | tee sha512sum.txt
 install:
-- go get -d -v ./...
 - go build -v ./...
 deploy:
   provider: releases
   file_glob: true
   file:
-  - go-jsonnet-*.tar.gz
+  - jsonnet-*.tar.gz
   - sha512sum.txt
   skip_cleanup: true
   on:
+    repo: criteo-forks/go-jsonnet
     repo: bubblesly/go-jsonnet
+    tags: true
   api-key:
-    secure: ZEl1JCVLdZ3TP10rXzIOAiT+TGt+pB8PEZQvNHIPLwzqxdw2h/pOE62Sb5oM50SYh+v4CDHJV+WVRCrl20HpOJH5H4KvFoqbjsxw0nH5YEYVMImwIrmuBl2b+4m76O5uGVkMul/GiWC89JDa9TOmOMRVCXrOvtO3C5FPy30ZOTOYhxH8lEW+1w6IHKcCsZqiCvFk+1nVC3wHGYB2bvRcnGKJzSj/H5DA85wKdEBsMHDiJzwzTDr1gSJzinsmPEkvdzKeqFtx/CtzFx+4dxOSYACqiFVvVP6IdYvVYfofOZ6LiWo17oOh9L9u9AXxuX7cK6dYzn2pj3tSubdKa/PwBIZ4ZqtSonMnVKGPmUndX10gJQquwLv3bvW3q4/MZIwYaKIDQWFECSGu0mTr73vtZFou0Z5+e07lWfRkgaHWFdWJbx0QxxG8Oft6MfxFGxP6eKVBE0fascQZTjkHSM8DoiFpvEiGJ+a4XYTxazQXDrOjBFtBUk5BBMdpW9jjXdAOtD/Gzfud/T8tw+bEfX2ppPMZkNaH9Q5RUX5T71QEZ1BCP1ZCM4lNUWZiTQFyzUh+u+YmfLq1oKIM8gJ21E+cnbRx7mTThDB6kFF9abrUyEDau4zCi2CiehZ5JoDbiTACuUarSP2qEkxh1vgICL9Z3toxn3FJGhrmlBLJQrPYYv0=
+    secure: X9cSPmWD3vJx6dPs/D94t3g98qrU+akJiEytMLhDArVT/mjsgA6z1b1pqLDtmb8ShbMdnWrPP7xsNLy5CVVgyxA46gH1QfWZnNKfYLXm/m/7QdmsrLGWiNgz3F/Wwde0W4HdZh55/KbGOay/EIR9uC55NZ1kx3JJsewtnvyMd1bYmZAhd9YSXvMmddQkUq6Y198GexOFe5UT9KmHD4tLmmaqUhCEmN396p5LK+G7p+fJt/cBO0M06owqdaM6YFhlimxwDQasl0C/KFH+WKJIE7OAuTV0Zjj2TYtHCRaVoDapNXMFgMSjgp+PBLEGOGkGmz5c5YECbR7B7wuiFZufFHax5thvhrs6SPIljnybUu0flhy6a3wQPabsNqKOg8U/YSflaGNrSYBLg5dVCKqre1wINHwXhkhDwol8yX3uVJVXti2BbcsubCvAgTVVUNWfKgLfj6uebUpnAGvk1iR0AvHiDjlY0L6iv8uWjClueTqw/oM90s/4Ie8D7dhtjb/g2856o+SCVDGhktkHzF+sFN+f6N0r91Stqh5IFvwK4CtB+sUfGu2H+DMIrEfseUDpSscjrGhV0NRqPBCFWgL3597ijmMuJZspiWOGMDJ1YtN+3/wO1hFN3HrXmhoWDwOmD5aDqevTQDLfMwHYWgu5RXZq1AOgQ8XP3QAte4A65jA=
